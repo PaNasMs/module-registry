@@ -25,7 +25,7 @@ class RegistryTests(unittest.TestCase):
             r.validate_entry(self.entry)
 
     def test_external_download_rejected(self):
-        self.entry['url'] = self.entry['url'].replace('github.com/OstojaOS', 'github.com/attacker')
+        self.entry['url'] = self.entry['url'].replace('github.com/PaNasMs', 'github.com/attacker')
         with self.assertRaisesRegex(ValueError, 'official'):
             r.validate_entry(self.entry)
 

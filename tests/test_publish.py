@@ -19,7 +19,7 @@ class Publish(unittest.TestCase):
         self.key=Path(self.temp.name)/'key'
         subprocess.run(['openssl','genpkey','-algorithm','ED25519','-out',str(self.key)],check=True)
         self.root=Path(self.temp.name);(self.root/'keys').mkdir()
-        subprocess.run(['openssl','pkey','-in',str(self.key),'-pubout','-out',str(self.root/'keys/ostojaos-ci.pem')],check=True)
+        subprocess.run(['openssl','pkey','-in',str(self.key),'-pubout','-out',str(self.root/'keys/panasms-ci.pem')],check=True)
         p=patch.object(registry,'ROOT',self.root);p.start();self.addCleanup(p.stop)
     def payload(self, corrupt=False, extra=False):
         files={'LICENSE':b'license','NOTICE':b'notice','ui/index.js':b'js','bin/server':b'elf'}
@@ -33,7 +33,7 @@ class Publish(unittest.TestCase):
     def test_sign_and_verify_exact_payload(self):
         raw=publish.signed_archive(self.payload(),'files','0.2.9',self.key)
         m,_=registry.inspect_archive(raw)
-        self.assertEqual(m['signer'],'ostojaos-ci')
+        self.assertEqual(m['signer'],'panasms-ci')
         self.assertEqual(m['id'],'files')
     def test_identity_mismatch(self):
         for mid,version in [('terminal','0.2.9'),('files','9.9.9')]:
@@ -43,7 +43,7 @@ class Publish(unittest.TestCase):
             with self.assertRaises(ValueError):publish.signed_archive(raw,'files','0.2.9',self.key)
     def test_unpublished_or_prerelease_ignored(self):
         for release in [{'draft':True,'prerelease':False,'tag_name':'v0.2.9'},{'draft':False,'prerelease':True,'tag_name':'v0.2.9'}]:
-            self.assertFalse(publish.publish_build(release,'files','OstojaOS/module-files',self.key))
+            self.assertFalse(publish.publish_build(release,'files','PaNasMs/module-files',self.key))
     def test_mutable_release_rejected(self):
         with self.assertRaisesRegex(ValueError,'immutable'):
-            publish.publish_build({'draft':False,'prerelease':False,'tag_name':'v0.2.9','immutable':False},'files','OstojaOS/module-files',self.key)
+            publish.publish_build({'draft':False,'prerelease':False,'tag_name':'v0.2.9','immutable':False},'files','PaNasMs/module-files',self.key)

@@ -13,9 +13,9 @@ import urllib.request
 import zipfile
 import registry as r
 
-REPOSITORIES = {mid: 'OstojaOS/module-' + mid for mid in ('files', 'terminal', 'cloud-sync')}
-REGISTRY = 'OstojaOS/module-registry'
-SIGNER = 'ostojaos-ci'
+REPOSITORIES = {mid: 'PaNasMs/module-' + mid for mid in ('files', 'terminal', 'cloud-sync')}
+REGISTRY = 'PaNasMs/module-registry'
+SIGNER = 'panasms-ci'
 
 
 def gh(*args, data=None):
@@ -92,7 +92,7 @@ def publish_build(release, mid, repo, key):
     digest = hashlib.sha256(raw).hexdigest()
     r.require(len(raw) == asset['size'] and asset.get('digest') == 'sha256:'+digest, 'Source download hash mismatch')
     release_tag = f'{mid}-v{version}'
-    filename = f'{mid}-{version}-arm64.ostojaos'
+    filename = f'{mid}-{version}-arm64.panasms'
     with tempfile.TemporaryDirectory() as folder:
         archive = Path(folder)/filename
         try:

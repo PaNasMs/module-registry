@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build and verify the offline-signed OstojaOS module registry."""
+"""Build and verify the offline-signed PaNasMs module registry."""
 import argparse
 import base64
 import hashlib
@@ -101,8 +101,8 @@ def validate_entry(entry):
     require(entry['channel'] in ('stable', 'testing'), 'Invalid channel')
     require(type(entry['size']) is int and 0 < entry['size'] <= MAX_ARCHIVE, 'Invalid archive size')
     require(re.fullmatch(r'[0-9a-f]{64}', entry['sha256']), 'Invalid archive digest')
-    filename = f"{m['id']}-{m['version']}-{m['architecture']}.ostojaos"
-    pattern = r'https://github.com/OstojaOS/[a-z][a-z0-9-]*/releases/download/' + re.escape(m['id'] + '-v' + m['version']) + '/' + re.escape(filename)
+    filename = f"{m['id']}-{m['version']}-{m['architecture']}.panasms"
+    pattern = r'https://github.com/PaNasMs/[a-z][a-z0-9-]*/releases/download/' + re.escape(m['id'] + '-v' + m['version']) + '/' + re.escape(filename)
     require(re.fullmatch(pattern, entry['url']), 'URL must reference the exact official GitHub release asset')
     raw = json.dumps(m, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode()
     verify_signature(raw, base64.b64decode(entry['manifestSignature'], validate=True), m['signer'])
@@ -124,7 +124,7 @@ def catalog():
     for mid, versions in sorted(releases.items()):
         versions.sort(key=lambda v: (tuple(map(int, v['manifest']['version'].split('.'))), v['manifest']['architecture']), reverse=True)
         modules.append({'id': mid, 'releases': versions})
-    return {'schemaVersion': 1, 'id': 'ostojaos-official', 'name': 'OstojaOS modules', 'modules': modules}
+    return {'schemaVersion': 1, 'id': 'panasms-official', 'name': 'PaNasMs modules', 'modules': modules}
 
 
 def verify_catalog():
@@ -139,7 +139,7 @@ def verify_catalog():
 def verify_online(data):
     for module in data['modules']:
         for entry in module['releases']:
-            request = urllib.request.Request(entry['url'], headers={'User-Agent': 'OstojaOS-registry-validator/1'})
+            request = urllib.request.Request(entry['url'], headers={'User-Agent': 'PaNasMs-registry-validator/1'})
             with urllib.request.urlopen(request, timeout=60) as response:
                 raw = response.read(MAX_ARCHIVE + 1)
             require(len(raw) == entry['size'], 'Downloaded size mismatch')
@@ -166,10 +166,10 @@ def build_site(data):
 <a class="download" href="{e(release['url'])}">Download module <span>↓</span></a>
 <details><summary>SHA256</summary><code>{e(release['sha256'])}</code></details></article>''')
     document = '''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>OstojaOS · Modules</title><meta name="description" content="Official signed modules for your OstojaOS home server.">
+<title>PaNasMs · Modules</title><meta name="description" content="Official signed modules for your PaNasMs home server.">
 <style>body{margin:0;background:#10151d;color:#edf2fa;font:16px/1.6 system-ui,sans-serif}main{max-width:1000px;margin:auto;padding:64px 24px}.brand{font-weight:750;letter-spacing:-1px;font-size:24px;color:#a6d9c5}h1{font-size:clamp(38px,7vw,64px);letter-spacing:-2px;line-height:1.1;margin:32px 0 18px}.lead{color:#a9b4c4;max-width:640px}section{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin:40px 0}article{background:#19212d;border:1px solid #303d4d;border-radius:18px;padding:26px}.tag{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#a6d9c5}h2{font-size:26px;margin:12px 0}article p{color:#a9b4c4;min-height:76px}dl{display:grid;grid-template-columns:75px 1fr;gap:8px;font-size:14px}dt{color:#8f9eaf}dd{margin:0}a{color:#a6d9c5}.download{display:flex;justify-content:space-between;border:1px solid #617f76;border-radius:9px;padding:10px 14px;text-decoration:none;margin:24px 0 14px}.download:hover{background:#263a37}summary{cursor:pointer;color:#a9b4c4;font-size:13px}code{overflow-wrap:anywhere;font-size:12px}footer{border-top:1px solid #303d4d;padding-top:24px;font-size:14px;color:#a9b4c4}nav{display:flex;gap:22px;flex-wrap:wrap}</style>
-<main><div class="brand">OstojaOS</div><h1>A home for your modules.</h1><p class="lead">Official extensions for your home server. Versioned packages, signed with Ed25519 and checked before publication.</p><section>'''
-    document += ''.join(cards) + '''</section><footer><p>Install or update with one click from the Modules page in OstojaOS core 0.2.1 or later. You can also download an archive and upload it in the panel.</p><nav><a href="catalog.json">JSON catalog</a><a href="catalog.sig">Catalog signature</a><a href="https://github.com/OstojaOS/module-registry">GitHub</a><a href="LICENSE">License</a></nav><p>Original software: PolyForm Noncommercial 1.0.0. Third-party components retain their own licenses.</p></footer></main></html>'''
+<main><div class="brand">PaNasMs</div><h1>A home for your modules.</h1><p class="lead">Official extensions for your home server. Versioned packages, signed with Ed25519 and checked before publication.</p><section>'''
+    document += ''.join(cards) + '''</section><footer><p>Install or update with one click from the Modules page in PaNasMs core 0.2.1 or later. You can also download an archive and upload it in the panel.</p><nav><a href="catalog.json">JSON catalog</a><a href="catalog.sig">Catalog signature</a><a href="https://github.com/PaNasMs/module-registry">GitHub</a><a href="LICENSE">License</a></nav><p>Original software: PolyForm Noncommercial 1.0.0. Third-party components retain their own licenses.</p></footer></main></html>'''
     (site / 'index.html').write_text(document)
     (site / '.nojekyll').touch()
 
@@ -179,11 +179,11 @@ def main():
     sub = parser.add_subparsers(dest='action', required=True)
     imp = sub.add_parser('import-release')
     imp.add_argument('archive', type=Path)
-    imp.add_argument('--repository', default='OstojaOS/module-registry')
+    imp.add_argument('--repository', default='PaNasMs/module-registry')
     imp.add_argument('--channel', choices=['stable', 'testing'], default='stable')
     sign = sub.add_parser('sign')
     sign.add_argument('--key', required=True, type=Path)
-    sign.add_argument('--signer', default='ostojaos-local')
+    sign.add_argument('--signer', default='panasms-local')
     verify = sub.add_parser('verify')
     verify.add_argument('--online', action='store_true')
     build = sub.add_parser('build')
@@ -193,7 +193,7 @@ def main():
         raw = args.archive.read_bytes()
         m, signature = inspect_archive(raw)
         entry = {'manifest': m, 'manifestSignature': signature, 'channel': args.channel,
-                 'url': f"https://github.com/{args.repository}/releases/download/{m['id']}-v{m['version']}/{m['id']}-{m['version']}-{m['architecture']}.ostojaos",
+                 'url': f"https://github.com/{args.repository}/releases/download/{m['id']}-v{m['version']}/{m['id']}-{m['version']}-{m['architecture']}.panasms",
                  'sha256': hashlib.sha256(raw).hexdigest(), 'size': len(raw)}
         validate_entry(entry)
         dest = ROOT / 'entries' / f"{m['id']}-{m['version']}-{m['architecture']}.json"
