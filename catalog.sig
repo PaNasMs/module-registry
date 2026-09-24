@@ -1,1 +1,1 @@
-{"algorithm":"Ed25519","signature":"l8xfYm1kXZQjtn5R2xh+QpGBg0EPNzLX9l/nDYK+NGwLyOySlql2s6EInJtl/oiCaM+SkGBv0BzPwdyS+mMCAA==","signer":"panasms-ci"}
+{"algorithm":"Ed25519","signature":"KjxOfxoM0gUknz3OOrdqgj8EfLiSxOBxIUHhLrajoA52kJ68mqrxMGR6E2WJydQ6rQ8cpi6RjMMvxoWwUPzfAQ==","signer":"panasms-ci"}
