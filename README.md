@@ -15,6 +15,8 @@ Files and Terminal require the PaNasMs namespace, core `>=0.2.0,<0.3.0`, module 
 
 **Cloud Sync (prototype)** — multiple Google Drive and Dropbox connections, local authorization helper, per-user SQLite state, pause/retry and task history. Requires core `>=0.2.1,<0.3.0`, ARM64, Python 3 and rclone (installed from OS packages). Upload/download modes do not propagate deletions and keep replaced destination versions; initial two-way sync requires one empty folder and retains rclone safety limits. Inotify and cloud change cursors avoid recurring local scans while idle. Actual provider access requires user authorization. OneDrive and Synology Drive are not included yet.
 
+**Containers and applications (preview)** — Docker installation checks, local images, container lifecycle, shared networks, persistent folders and Docker storage settings. Requires ARM64 and the current PaNasMs UI with container module SDK extensions. Advanced Compose deployment is currently hidden.
+
 ## Install
 
 Open **Modules** in PaNasMs core 0.2.1 or later and click the install or update icon. Alternatively, download the appropriate release archive from the catalog and upload it in **Modules**. The core checks module signatures, payload hashes, API/core compatibility, architecture and dependencies. Never install packages from an untrusted signer.
@@ -33,6 +35,7 @@ Open **Modules** in PaNasMs core 0.2.1 or later and click the install or update 
 - [Files](https://github.com/PaNasMs/module-files)
 - [Terminal](https://github.com/PaNasMs/module-terminal)
 - [Cloud Sync](https://github.com/PaNasMs/module-cloud-sync)
+- [Containers and applications](https://github.com/PaNasMs/module-containers)
 - [Shared SDK](https://github.com/PaNasMs/module-sdk)
 
 Update a module's manifest/package version and push `vX.Y.Z`. Its ARM64 CI tests
