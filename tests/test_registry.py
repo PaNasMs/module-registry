@@ -16,6 +16,15 @@ class RegistryTests(unittest.TestCase):
         self.data = r.verify_catalog()
         self.entry = copy.deepcopy(self.data['modules'][0]['releases'][0])
 
+    def test_optional_detailed_description(self):
+        m=self.entry['manifest']
+        m['longDescription']='Detailed text'
+        m['translations']={'ru':{'longDescription':'Подробности'}}
+        r.validate_manifest(m)
+        for value in ({}, 'x'*16001):
+            m['translations']['ru']['longDescription']=value
+            with self.assertRaisesRegex(ValueError,'detailed module description'):r.validate_manifest(m)
+
     def test_catalog_signature(self):
         self.assertGreaterEqual(len(self.data['modules']), 2)
 

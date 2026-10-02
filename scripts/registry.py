@@ -52,6 +52,14 @@ def validate_manifest(m):
     require(m.get('architecture') in ('arm64', 'amd64', 'all'), 'Invalid architecture')
     require(isinstance(m.get('core'), str) and all(re.fullmatch(r'\s*(>=|<=|>|<|=)?' + VERSION + r'\s*', p) for p in m['core'].split(',')), 'Invalid core compatibility')
     require(isinstance(m.get('title'), str) and 0 < len(m['title']) <= 120, 'Invalid title')
+    descriptions = [m]
+    if 'translations' in m:
+        require(isinstance(m['translations'], dict), 'Invalid module translations')
+        descriptions += list(m['translations'].values())
+    for labels in descriptions:
+        require(isinstance(labels, dict), 'Invalid module translations')
+        if 'longDescription' in labels:
+            require(isinstance(labels['longDescription'], str) and len(labels['longDescription']) <= 16000, 'Invalid detailed module description')
     require(m.get('license') == 'PolyForm-Noncommercial-1.0.0', 'Official module license missing')
     require(isinstance(m.get('files'), dict) and 0 < len(m['files']) <= 2000, 'Missing file hashes')
     require({'LICENSE', 'NOTICE', 'ui/index.js'} <= m['files'].keys(), 'Required distribution files missing')
