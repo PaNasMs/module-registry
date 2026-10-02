@@ -71,3 +71,7 @@ gh workflow run import.yml --repo PaNasMs/module-registry
 Public documentation is maintained in English.
 
 Original registry software, catalog metadata and modules use **PolyForm Noncommercial 1.0.0**. This is a source-available noncommercial license, not an OSI-approved open-source license. Third-party components retain their licenses; module archives include LICENSE and NOTICE. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+## Architecture variants
+
+Official module releases publish independent ARM64 and AMD64 payloads. The importer validates each payload against its asset architecture, signs both, and uploads all variants before finalizing the immutable registry release. The catalog keeps one entry per module/version/architecture; NAS clients select their compatible variant. Legacy ARM64-only versions stay immutable and valid.

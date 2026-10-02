@@ -36,7 +36,7 @@ def api(path, data=None, method=None):
     return json.loads(gh(*args, data=data))
 
 
-def signed_archive(raw, mid, version, key):
+def signed_archive(raw, mid, version, key, architecture="arm64"):
     r.require(len(raw) <= r.MAX_ARCHIVE, 'Build payload too large')
     with zipfile.ZipFile(io.BytesIO(raw)) as z:
         entries = z.infolist()
@@ -46,7 +46,7 @@ def signed_archive(raw, mid, version, key):
         r.require(z.getinfo('manifest.json').file_size <= 256 * 1024, 'Manifest too large')
         m = json.loads(z.read('manifest.json'))
         r.validate_manifest(m)
-        r.require(m['id'] == mid and m['version'] == version and m['architecture'] == 'arm64', 'Build identity mismatch')
+        r.require(m['id'] == mid and m['version'] == version and m['architecture'] == architecture and architecture in ('arm64', 'amd64'), 'Build identity mismatch')
         r.require(set(names) == {'manifest.json', *m['files']}, 'Unexpected payload files')
         payload = {}
         for name, digest in m['files'].items():
@@ -72,47 +72,66 @@ def signed_archive(raw, mid, version, key):
     return raw
 
 
+def build_assets(release, mid, version):
+    result = {}
+    for asset in release['assets']:
+        match = re.fullmatch(re.escape(f'{mid}-{version}-') + r'(arm64|amd64)\.unsigned\.zip', asset['name'])
+        if not match:
+            continue
+        arch = match[1]
+        r.require(arch not in result and asset['size'] <= r.MAX_ARCHIVE, 'Duplicate or oversized build asset')
+        result[arch] = asset
+    r.require(result, 'Missing build assets')
+    return result
+
+
 def publish_build(release, mid, repo, key):
     tag = release['tag_name']
     if release['draft'] or release['prerelease'] or not re.fullmatch('v'+r.VERSION, tag):
         return False
     version = tag[1:]
-    entry = r.ROOT/'entries'/f'{mid}-{version}-arm64.json'
-    if entry.exists():
-        return False
     r.require(release.get('immutable'), 'Source release must be immutable')
-    asset_name = f'{mid}-{version}-arm64.unsigned.zip'
-    assets = [a for a in release['assets'] if a['name'] == asset_name]
-    r.require(len(assets) == 1 and assets[0]['size'] <= r.MAX_ARCHIVE, 'Missing or oversized build asset')
-    asset = assets[0]
-    url = f'https://github.com/{repo}/releases/download/{tag}/{asset_name}'
-    r.require(asset['browser_download_url'] == url, 'Unexpected build URL')
-    with urllib.request.urlopen(url, timeout=90) as response:
-        raw = response.read(r.MAX_ARCHIVE+1)
-    digest = hashlib.sha256(raw).hexdigest()
-    r.require(len(raw) == asset['size'] and asset.get('digest') == 'sha256:'+digest, 'Source download hash mismatch')
+    assets = build_assets(release, mid, version)
+    if all((r.ROOT/'entries'/f'{mid}-{version}-{arch}.json').exists() for arch in assets):
+        return False
     release_tag = f'{mid}-v{version}'
-    filename = f'{mid}-{version}-arm64.panasms'
     with tempfile.TemporaryDirectory() as folder:
-        archive = Path(folder)/filename
+        archives, records, manifests = [], {}, {}
+        for arch, asset in sorted(assets.items()):
+            url = f'https://github.com/{repo}/releases/download/{tag}/{asset["name"]}'
+            r.require(asset['browser_download_url'] == url, 'Unexpected build URL')
+            with urllib.request.urlopen(url, timeout=90) as response:
+                raw = response.read(r.MAX_ARCHIVE+1)
+            digest = hashlib.sha256(raw).hexdigest()
+            r.require(len(raw) == asset['size'] and asset.get('digest') == 'sha256:'+digest, 'Source download hash mismatch')
+            archive = Path(folder)/f'{mid}-{version}-{arch}.panasms'
+            archive.write_bytes(signed_archive(raw, mid, version, key, arch))
+            manifests[arch], _ = r.inspect_archive(archive.read_bytes())
+            archives.append(archive)
+            records[arch] = {'repository':repo,'tag':tag,'releaseId':release['id'],'assetId':asset['id'],'sha256':digest,'architecture':arch}
         try:
             published = json.loads(gh('release','view',release_tag,'--repo',REGISTRY,'--json','isDraft'))
         except RuntimeError:
             published = None
         if published and not published['isDraft']:
-            gh('release','download',release_tag,'--repo',REGISTRY,'--pattern',filename,'--dir',folder)
-            m, _ = r.inspect_archive(archive.read_bytes())
-            r.require(m['id']==mid and m['version']==version and m['files']==json.loads(zipfile.ZipFile(io.BytesIO(raw)).read('manifest.json'))['files'], 'Published package differs from source build')
+            existing = Path(folder)/'published';existing.mkdir()
+            for archive in archives:
+                gh('release','download',release_tag,'--repo',REGISTRY,'--pattern',archive.name,'--dir',str(existing))
+                m, _ = r.inspect_archive((existing/archive.name).read_bytes())
+                expected, _ = r.inspect_archive(archive.read_bytes())
+                r.require(m == expected, 'Published package differs from source build')
+                archive.write_bytes((existing/archive.name).read_bytes())
         else:
-            archive.write_bytes(signed_archive(raw, mid, version, key))
             if published is None:
                 gh('release','create',release_tag,'--repo',REGISTRY,'--draft','--title',f'{mid} {version}',
-                   '--notes',f'Automatically built from https://github.com/{repo}/releases/tag/{tag}\nSource payload SHA256: {digest}')
-            gh('release','upload',release_tag,str(archive),'--repo',REGISTRY,'--clobber')
+                   '--notes',f'Automatically built from https://github.com/{repo}/releases/tag/{tag}. Architectures: '+', '.join(sorted(assets)))
+            gh('release','upload',release_tag,*map(str, archives),'--repo',REGISTRY,'--clobber')
             gh('release','edit',release_tag,'--repo',REGISTRY,'--draft=false')
-        subprocess.run(['python3',str(r.ROOT/'scripts/registry.py'),'import-release',str(archive)],check=True)
-    provenance = r.ROOT/'provenance';provenance.mkdir(exist_ok=True)
-    (provenance/f'{mid}-{version}.json').write_bytes(r.canonical({'repository':repo,'tag':tag,'releaseId':release['id'],'assetId':asset['id'],'sha256':digest}))
+        for archive in archives:
+            subprocess.run(['python3',str(r.ROOT/'scripts/registry.py'),'import-release',str(archive)],check=True)
+        provenance = r.ROOT/'provenance';provenance.mkdir(exist_ok=True)
+        for arch, record in records.items():
+            (provenance/f'{mid}-{version}-{arch}.json').write_bytes(r.canonical(record))
     return True
 
 
