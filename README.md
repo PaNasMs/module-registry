@@ -1,64 +1,121 @@
 # PaNasMs module registry
 
-Modules for **Pavlo's NAS Management System**.
+This repository publishes the signed module catalog for PaNasMs (Pavlo's NAS Management System),
+together with the ARM64 and AMD64 module packages. The PaNasMs core lists this catalog on its
+Modules page and installs and updates modules from it. The core source is in the
+[main repository](https://github.com/PaNasMs/panasms), and the [project website](https://panasms.github.io/)
+has installation and setup guides. This repository does not contain the core source or any
+private signing key.
 
-Official catalog: **https://panasms.github.io/module-registry/**
-
-This repository publishes a signed catalog and versioned ARM64 module packages. It does not contain the PaNasMs core source or private signing keys. PaNasMs core 0.2.1 and later lists this catalog in the Modules panel and supports installation and updates with one click. Installation from a downloaded `.panasms` archive is also available.
+Catalog: https://panasms.github.io/module-registry/
 
 ## Available modules
 
-- **Files** — file manager, folder trees, removable devices and file operations.
-- **Terminal** — interactive system-user terminal with administrator permission checks.
+| Module | Version | What it does |
+| --- | --- | --- |
+| Files | 0.3.13 | File manager with a folder tree, removable devices, uploads, background copy and move, trash and thumbnails. It can also browse connected Google Drive and Dropbox accounts. |
+| Terminal | 0.2.11 | Browser terminal that runs as the signed-in Linux user. Available to administrators. |
+| Cloud Sync | 0.1.24 | Folder synchronization with several Google Drive and Dropbox accounts. |
+| Containers | 0.1.16 | Docker images, container lifecycle, shared networks, persistent folders and Docker storage settings. Available to administrators. |
 
-Files and Terminal require the PaNasMs namespace, core `>=0.2.0,<0.3.0`, module API 1 and ARM64. OS package requirements are included in each signed manifest. The previous project namespace is not compatible with these module globals, service paths or signing-key identifiers.
+Every current release requires core `>=0.2.15,<0.3.0` and module API 1, and has ARM64 and AMD64
+packages. Each signed manifest lists the Debian packages the module needs, such as `rclone`
+for Files and Cloud Sync.
 
-**Cloud Sync (prototype)** — multiple Google Drive and Dropbox connections, local authorization helper, per-user SQLite state, pause/retry and task history. Requires core `>=0.2.1,<0.3.0`, ARM64, Python 3 and rclone (installed from OS packages). Upload/download modes do not propagate deletions and keep replaced destination versions; initial two-way sync requires one empty folder and retains rclone safety limits. Inotify and cloud change cursors avoid recurring local scans while idle. Actual provider access requires user authorization. OneDrive and Synology Drive are not included yet.
+Cloud Sync tasks run in upload, download or two-way mode. Upload and download modes do not
+propagate deletions and keep replaced versions at the destination. The first two-way sync needs
+one of the two folders to be empty, and rclone's deletion limit stays in force. While idle, the
+module waits for inotify events and cloud change cursors instead of rescanning local folders.
+Cloud access needs an authorized Google or Dropbox connection on the NAS. OneDrive and Synology
+Drive are not supported yet.
 
-**Containers and applications (preview)** — Docker installation checks, local images, container lifecycle, shared networks, persistent folders and Docker storage settings. Requires ARM64 and the current PaNasMs UI with container module SDK extensions. Advanced Compose deployment is currently hidden.
+Containers checks for Docker Engine and Compose and offers to install missing components. It
+groups Compose-managed containers in the list but does not deploy arbitrary Compose projects yet.
 
-## Install
+## Install a module
 
-Open **Modules** in PaNasMs core 0.2.1 or later and click the install or update icon. Alternatively, download the appropriate release archive from the catalog and upload it in **Modules**. The core checks module signatures, payload hashes, API/core compatibility, architecture and dependencies. Never install packages from an untrusted signer.
+Open **Modules** in the PaNasMs panel and click the install or update icon next to a module. You
+can also download a release archive from the catalog page and upload it on the Modules page.
+Before installing, the core checks the module signature, payload hashes, API and core
+compatibility, architecture and dependencies. Do not install packages from a signer you do not
+trust.
 
-## Catalog protocol
+## Catalog format
 
-- `catalog.json`: deterministic UTF-8 JSON with a trailing newline; `schemaVersion: 1`.
-- `catalog.sig`: Ed25519 envelope with `algorithm`, `signer` and base64 `signature`. The signature covers the exact bytes of `catalog.json`.
-- `modules[].releases[]`: signed module manifest, base64 manifest signature, immutable archive URL, SHA256, size and channel. All published versions remain available; releases are sorted newest first.
-- Manifest signatures cover compact, sorted-key UTF-8 JSON **without** a trailing newline, matching the core package format.
-- Clients must use a separately trusted, pinned public key; downloading a key from this site does not establish trust. PaNasMs pins the `panasms-local` and `panasms-ci` key identifiers in the core package.
-- A client must verify catalog signature, compatibility, archive length and SHA256, manifest signature, and every payload hash before installation. Registry metadata alone must never authorize installation or execution. The current client verifies signatures and selects compatible stable versions. Signed catalog expiry and a persisted anti-rollback watermark are not implemented.
+- `catalog.json` is deterministic UTF-8 JSON with a trailing newline and `schemaVersion: 1`.
+- `catalog.sig` is an Ed25519 envelope with `algorithm`, `signer` and a base64 `signature`. The
+  signature covers the exact bytes of `catalog.json`.
+- Each `modules[].releases[]` entry has the signed module manifest, a base64 manifest signature,
+  an immutable archive URL, its SHA-256, its size and the channel. The catalog keeps one entry per
+  module, version and architecture, sorted newest first. All published versions stay available.
+- A manifest signature covers compact, sorted-key UTF-8 JSON without a trailing newline, which
+  matches the core package format.
+- Clients must use a public key they trust through a separate channel. Downloading a key from this
+  site does not establish trust. The core package pins the `panasms-local` and `panasms-ci` key
+  identifiers.
+- Before installation a client must verify the catalog signature, compatibility, archive length
+  and SHA-256, the manifest signature and every payload hash. Registry metadata alone must never
+  authorize installation or execution. The PaNasMs client verifies signatures, offers only stable
+  releases and selects the variant for the NAS architecture. It does not yet enforce signed catalog expiry
+  or keep an anti-rollback watermark.
 
-## Source repositories and automated releases
+## Repository layout
+
+| Path | Contents |
+| --- | --- |
+| `catalog.json`, `catalog.sig` | Signed catalog |
+| `entries/` | One release entry per module, version and architecture |
+| `provenance/` | Source repository, tag, release and asset SHA-256 for each imported package |
+| `keys/` | Public keys for `panasms-local` and `panasms-ci` |
+| `site/` | Static catalog page published to GitHub Pages |
+| `scripts/registry.py` | Import, sign, build and verify the catalog |
+| `scripts/publish.py` | Automated import of module releases |
+| `tests/` | Unit tests for both scripts |
+
+## Automated releases
+
+Source repositories:
 
 - [Files](https://github.com/PaNasMs/module-files)
 - [Terminal](https://github.com/PaNasMs/module-terminal)
 - [Cloud Sync](https://github.com/PaNasMs/module-cloud-sync)
-- [Containers and applications](https://github.com/PaNasMs/module-containers)
-- [Shared SDK](https://github.com/PaNasMs/module-sdk)
+- [Containers](https://github.com/PaNasMs/module-containers)
+- [Module SDK](https://github.com/PaNasMs/module-sdk)
 
-Update a module's manifest/package version and push `vX.Y.Z`. Its ARM64 CI tests
-and builds the source and publishes an immutable release with an unsigned payload.
-The **Import module releases** workflow checks these repositories every 15 minutes
-(GitHub scheduling can be delayed) or on manual dispatch. It verifies the source
-release and payload hashes, signs installable archives with `panasms-ci`, publishes
-immutable registry releases, verifies all public catalog assets, then creates and
-merges a catalog PR through the required `validate` status and dispatches Pages.
-No source payload code is executed by the signing job.
-The `CI_PUBLISHING_ENABLED` repository variable gates publication. It is enabled
-for the PaNasMs registry, and the deployed core trusts the CI public key. New
-installations must receive trusted keys through their core package before using
-this catalog.
+To release a module, update its manifest and package version and push a `vX.Y.Z` tag. The
+module's CI tests and builds the source for ARM64 and AMD64 and publishes an immutable release with
+unsigned payloads.
 
-The CI signing key is a secret available only in this repository. The existing
-local signing key remains offline. Key rotation requires distributing the replacement public key through
-a core update before publishing catalogs signed with it. Downloading a catalog does
-not establish key trust. Existing local-key releases remain valid.
+The **Import module releases** workflow (`import.yml`) checks the source repositories every 15
+minutes, and you can also start it by hand. GitHub may delay scheduled runs. The workflow:
 
-Publication is serialized and retryable. Published archives are verified and reused,
-never overwritten. Existing entries are retained. Concurrent manual changes to the
-catalog cause a safe retry. CI uses pinned action commits and lockfiles.
+1. verifies the source release, checks each payload against its asset architecture and checks
+   the payload hashes;
+2. signs the installable archives with the `panasms-ci` key;
+3. uploads all architecture variants before it finalizes the immutable registry release;
+4. verifies every public catalog asset;
+5. opens and merges a catalog pull request after the required `validate` check passes, then
+   starts the Pages deployment.
+
+The signing job never runs code from a module payload. The `CI_PUBLISHING_ENABLED` repository
+variable turns publication on or off, and it is on for this registry. The **Validate and publish
+registry** workflow (`pages.yml`) runs the tests and an online catalog build for every pull request
+and push to `main`, and publishes the site from `main`.
+
+Publication runs one job at a time, and a failed run can safely run again. The importer verifies and reuses archives
+that are already published and never overwrites them. Existing entries stay in the catalog. If
+someone changes the catalog by hand at the same time, the importer retries. CI pins action commits
+and uses lockfiles.
+
+## Signing keys
+
+The CI signing key is a secret that only this repository can use. The `panasms-local` key stays
+offline. A new installation trusts a key only after its core package delivers it, so rotating a
+key means shipping the new public key in a core update before any catalog is signed with it.
+Releases signed with the local key remain valid. Older ARM64-only releases also remain valid and
+unchanged.
+
+## Development
 
 ```sh
 python3 -m unittest discover -s tests -v
@@ -68,10 +125,8 @@ gh workflow run import.yml --repo PaNasMs/module-registry
 
 ## License
 
-Public documentation is maintained in English.
-
-Original registry software, catalog metadata and modules use **PolyForm Noncommercial 1.0.0**. This is a source-available noncommercial license, not an OSI-approved open-source license. Third-party components retain their licenses; module archives include LICENSE and NOTICE. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
-
-## Architecture variants
-
-Official module releases publish independent ARM64 and AMD64 payloads. The importer validates each payload against its asset architecture, signs both, and uploads all variants before finalizing the immutable registry release. The catalog keeps one entry per module/version/architecture; NAS clients select their compatible variant. Legacy ARM64-only versions stay immutable and valid.
+Original registry software, catalog metadata and modules are licensed under PolyForm
+Noncommercial 1.0.0. It is a source-available noncommercial license, not an OSI-approved
+open-source license. Third-party components keep their own licenses, and each module archive
+includes LICENSE and NOTICE files. See [LICENSE](LICENSE) and [NOTICE](NOTICE). Public
+documentation is in English.
