@@ -125,8 +125,12 @@ gh workflow run import.yml --repo PaNasMs/module-registry
 
 ## License
 
-Original registry software, catalog metadata and modules are licensed under PolyForm
-Noncommercial 1.0.0. It is a source-available noncommercial license, not an OSI-approved
-open-source license. Third-party components keep their own licenses, and each module archive
-includes LICENSE and NOTICE files. See [LICENSE](LICENSE) and [NOTICE](NOTICE). Public
-documentation is in English.
+Current original registry software and new metadata use the
+[PaNasMs Source-Available License 1.0](LICENSE). Internal business use and
+independent paid services on customer-owned equipment are allowed. Software sales
+and inclusion in paid products require a separate written agreement.
+
+Each module release retains the license recorded in its signed manifest and
+included LICENSE/NOTICE. Historical PolyForm releases are not relicensed. The
+registry accepts both identifiers and displays the actual release license.
+Third-party components keep their own licenses. See [NOTICE](NOTICE).

@@ -1,2 +1,25 @@
-Required Notice: Original PaNasMs registry software and catalog metadata are licensed under PolyForm Noncommercial 1.0.0.
-Third-party components retain their own licenses. See each signed module archive for LICENSE and NOTICE.
+Based on PaNasMs — Pavlo's NAS Management System, by Pavlo Matviienko
+and contributors. Original project: https://github.com/PaNasMs/panasms
+
+Original PaNasMs material is licensed under the PaNasMs Source-Available
+License 1.0 (LicenseRef-PaNasMs-Source-Available-1.0). See LICENSE for the
+complete combined terms. This is not unmodified Apache 2.0 or standard
+Commons Clause, and no Apache-only alternative is offered for covered material.
+
+Personal and internal business use, free redistribution, and independent paid
+installation/support on customer-owned equipment are permitted by LICENSE.
+Selling covered software or including it in a paid product requires prior
+written approval and a separate written agreement with the relevant Licensor.
+
+Copyright remains with the respective authors. Third-party software, libraries,
+icons, fonts, images and separately identified derived code retain their own
+licenses and copyright notices. This notice does not relicense third-party
+material, assign ownership, or grant rights a contributor does not hold.
+
+Historical CasaOS patches, vendor materials, reference documents and chassis/CAD
+files are outside this software grant. Existing released copies retain their
+original license terms. LICENSE controls; this NOTICE is informational.
+
+Original registry tooling and new catalog metadata are covered by LICENSE.
+Module payloads and historical release metadata retain the license shipped
+with each release; see the signed archive for its LICENSE and NOTICE.
