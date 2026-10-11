@@ -21,9 +21,9 @@ class Publish(unittest.TestCase):
         self.root=Path(self.temp.name);(self.root/'keys').mkdir()
         subprocess.run(['openssl','pkey','-in',str(self.key),'-pubout','-out',str(self.root/'keys/panasms-ci.pem')],check=True)
         p=patch.object(registry,'ROOT',self.root);p.start();self.addCleanup(p.stop)
-    def payload(self, corrupt=False, extra=False, arch="arm64"):
+    def payload(self, corrupt=False, extra=False, arch="arm64", license="LicenseRef-PaNasMs-Source-Available-1.0"):
         files={'LICENSE':b'license','NOTICE':b'notice','ui/index.js':b'js','bin/server':b'elf'}
-        m={'id':'files','version':'0.2.9','architecture':arch,'api':1,'core':'>=0.2.0,<0.3.0','title':'Files','license':'PolyForm-Noncommercial-1.0.0','service':'bin/server','files':{k:hashlib.sha256(v).hexdigest() for k,v in files.items()}}
+        m={'id':'files','version':'0.2.9','architecture':arch,'api':1,'core':'>=0.2.0,<0.3.0','title':'Files','license':license,'service':'bin/server','files':{k:hashlib.sha256(v).hexdigest() for k,v in files.items()}}
         out=io.BytesIO()
         with zipfile.ZipFile(out,'w') as z:
             z.writestr('manifest.json',json.dumps(m))
@@ -80,3 +80,25 @@ class Publish(unittest.TestCase):
     def test_duplicate_architecture_assets_rejected(self):
         asset={'name':'files-0.2.9-amd64.unsigned.zip','size':12}
         with self.assertRaisesRegex(ValueError,'Duplicate'):publish.build_assets({'assets':[asset,asset]},'files','0.2.9')
+
+    def test_current_and_legacy_license_signatures(self):
+        for license in ('LicenseRef-PaNasMs-Source-Available-1.0', 'PolyForm-Noncommercial-1.0.0'):
+            with self.subTest(license=license):
+                raw = publish.signed_archive(self.payload(license=license), 'files', '0.2.9', self.key)
+                manifest, _ = registry.inspect_archive(raw)
+                self.assertEqual(manifest['license'], license)
+        with self.assertRaisesRegex(ValueError, 'license'):
+            publish.signed_archive(self.payload(license='Apache-2.0'), 'files', '0.2.9', self.key)
+
+    def test_catalog_page_preserves_per_release_license(self):
+        for name in ('catalog.json', 'catalog.sig', 'LICENSE', 'NOTICE'):
+            (self.root / name).write_text('test')
+        releases = []
+        for license in ('LicenseRef-PaNasMs-Source-Available-1.0', 'PolyForm-Noncommercial-1.0.0'):
+            releases.append({'releases': [{'manifest': {'architecture': 'arm64', 'title': 'Test',
+                'version': '0.2.9', 'core': '>=0.2.0', 'license': license}, 'channel': 'stable',
+                'url': 'https://example.com/module', 'sha256': '0' * 64}]})
+        registry.build_site({'modules': releases})
+        page = (self.root / 'site/index.html').read_text()
+        self.assertIn('<dd>LicenseRef-PaNasMs-Source-Available-1.0</dd>', page)
+        self.assertIn('<dd>PolyForm-Noncommercial-1.0.0</dd>', page)
