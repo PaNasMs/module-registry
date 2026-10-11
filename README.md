@@ -125,12 +125,13 @@ gh workflow run import.yml --repo PaNasMs/module-registry
 
 ## License
 
-Current original registry software and new metadata use the
-[PaNasMs Source-Available License 1.0](LICENSE). Internal business use and
-independent paid services on customer-owned equipment are allowed. Software sales
-and inclusion in paid products require a separate written agreement.
+Current original registry software and new metadata use
+[Sustainable Use License 1.0](LICENSE) (`SUL-1.0`). See [NOTICE](NOTICE) for
+attribution, third-party terms and the additional paid-services permission.
+See the [licensing guide](https://github.com/PaNasMs/panasms/blob/main/LICENSING.md)
+for permitted use and commercial distribution.
 
 Each module release retains the license recorded in its signed manifest and
-included LICENSE/NOTICE. Historical PolyForm releases are not relicensed. The
-registry accepts both identifiers and displays the actual release license.
-Third-party components keep their own licenses. See [NOTICE](NOTICE).
+included LICENSE/NOTICE. Historical PolyForm and PaNasMs custom-license releases
+are not relicensed. The registry accepts all three identifiers and displays each
+release's actual license.
