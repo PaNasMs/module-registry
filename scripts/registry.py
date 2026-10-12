@@ -61,6 +61,7 @@ def validate_manifest(m):
         if 'longDescription' in labels:
             require(isinstance(labels['longDescription'], str) and len(labels['longDescription']) <= 16000, 'Invalid detailed module description')
     require(m.get('license') in ('SUL-1.0', 'PolyForm-Noncommercial-1.0.0', 'LicenseRef-PaNasMs-Source-Available-1.0'), 'Official module license missing')
+    require(type(m.get('memberAccess', False)) is bool, 'Invalid member-access capability')
     require(isinstance(m.get('files'), dict) and 0 < len(m['files']) <= 2000, 'Missing file hashes')
     require({'LICENSE', 'NOTICE', 'ui/index.js'} <= m['files'].keys(), 'Required distribution files missing')
     require(not m.get('service') or m['service'] in m['files'], 'Missing module server')

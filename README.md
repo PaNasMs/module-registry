@@ -17,9 +17,11 @@ Catalog: https://panasms.github.io/module-registry/
 | Terminal | 0.2.11 | Browser terminal that runs as the signed-in Linux user. Available to administrators. |
 | Cloud Sync | 0.1.24 | Folder synchronization with several Google Drive and Dropbox accounts. |
 | Containers | 0.1.16 | Docker images, container lifecycle, shared networks, persistent folders and Docker storage settings. Available to administrators. |
+| File Drop | 0.1.6 | Receive Android Quick Share files with PIN confirmation for every transfer. |
 
-Every current release requires core `>=0.2.15,<0.3.0` and module API 1, and has ARM64 and AMD64
-packages. Each signed manifest lists the Debian packages the module needs, such as `rclone`
+Each release declares its compatible core version and uses module API 1. File Drop
+requires core `>=0.2.22,<0.3.0`. Current releases have ARM64 and AMD64 packages.
+Each signed manifest lists the Debian packages the module needs, such as `rclone`
 for Files and Cloud Sync.
 
 Cloud Sync tasks run in upload, download or two-way mode. Upload and download modes do not
@@ -80,6 +82,7 @@ Source repositories:
 - [Terminal](https://github.com/PaNasMs/module-terminal)
 - [Cloud Sync](https://github.com/PaNasMs/module-cloud-sync)
 - [Containers](https://github.com/PaNasMs/module-containers)
+- [File Drop](https://github.com/PaNasMs/module-file-drop)
 - [Module SDK](https://github.com/PaNasMs/module-sdk)
 
 To release a module, update its manifest and package version and push a `vX.Y.Z` tag. The

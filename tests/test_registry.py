@@ -25,6 +25,14 @@ class RegistryTests(unittest.TestCase):
             m['translations']['ru']['longDescription']=value
             with self.assertRaisesRegex(ValueError,'detailed module description'):r.validate_manifest(m)
 
+    def test_member_access_must_be_boolean(self):
+        m = self.entry['manifest']
+        m['memberAccess'] = True
+        r.validate_manifest(m)
+        m['memberAccess'] = 'true'
+        with self.assertRaisesRegex(ValueError, 'member-access capability'):
+            r.validate_manifest(m)
+
     def test_catalog_signature(self):
         self.assertGreaterEqual(len(self.data['modules']), 2)
 
