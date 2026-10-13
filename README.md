@@ -83,6 +83,7 @@ Source repositories:
 - [Cloud Sync](https://github.com/PaNasMs/module-cloud-sync)
 - [Containers](https://github.com/PaNasMs/module-containers)
 - [File Drop](https://github.com/PaNasMs/module-file-drop)
+- [Integration Widgets Pack](https://github.com/PaNasMs/module-integration-widgets)
 - [Module SDK](https://github.com/PaNasMs/module-sdk)
 
 To release a module, update its manifest and package version and push a `vX.Y.Z` tag. The
