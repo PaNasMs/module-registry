@@ -13,7 +13,7 @@ import urllib.request
 import zipfile
 import registry as r
 
-REPOSITORIES = {mid: 'PaNasMs/module-' + mid for mid in ('files', 'terminal', 'cloud-sync', 'containers', 'file-drop', 'integration-widgets')}
+REPOSITORIES = {mid: 'PaNasMs/module-' + mid for mid in ('files', 'terminal', 'cloud-sync', 'containers', 'file-drop', 'integration-widgets', 'backup')}
 REGISTRY = 'PaNasMs/module-registry'
 SIGNER = 'panasms-ci'
 
