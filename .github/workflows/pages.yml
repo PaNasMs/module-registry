@@ -22,9 +22,9 @@ jobs:
           python-version: '3.13'
       - run: python3 -m unittest discover -s tests -v
       - name: Prevent rewriting existing releases
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || github.ref != 'refs/heads/main'
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || 'origin/main' }}
         run: |
           changes=$(git diff --name-only --diff-filter=MD "$BASE_SHA" HEAD -- entries)
           test -z "$changes" || { echo 'Published entries must not be modified or deleted'; exit 1; }
