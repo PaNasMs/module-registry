@@ -135,9 +135,18 @@ def publish_build(release, mid, repo, key):
     return True
 
 
+def request_validation(pr):
+    head = pr['head']
+    runs = json.loads(gh('run', 'list', '--repo', REGISTRY, '--workflow', 'pages.yml',
+                        '--branch', head['ref'], '--commit', head['sha'], '--event', 'workflow_dispatch',
+                        '--limit', '1', '--json', 'databaseId'))
+    if not runs:
+        gh('workflow', 'run', 'pages.yml', '--repo', REGISTRY, '--ref', head['ref'])
+
+
 def commit_catalog():
     base = api(f'repos/{REGISTRY}/git/ref/heads/main')['object']['sha']
-    # Refuse to merge a snapshot prepared against an older registry.
+    # The signed catalog must include the current registry entries.
     local = subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
     r.require(base == local, 'Registry changed during import; rerun to merge new entries')
     paths = ['catalog.json','catalog.sig']
@@ -148,13 +157,19 @@ def commit_catalog():
     branch = 'automation/catalog-' + os.environ['GITHUB_RUN_ID'] + '-' + os.environ['GITHUB_RUN_ATTEMPT']
     api(f'repos/{REGISTRY}/git/refs', {'ref':'refs/heads/'+branch,'sha':commit})
     pr = api(f'repos/{REGISTRY}/pulls', {'title':'Publish signed module builds','head':branch,'base':'main','body':'Import immutable official builds, verify payload hashes, sign packages and update the catalog. All public archives and signatures were verified before this commit.'})
-    api(f'repos/{REGISTRY}/statuses/{commit}', {'state':'success','context':'validate','description':'Registry tests and public package/signature validation passed','target_url':f'https://github.com/{REGISTRY}/actions/runs/'+os.environ['GITHUB_RUN_ID']})
-    result = api(f'repos/{REGISTRY}/pulls/{pr["number"]}/merge', {'merge_method':'squash','sha':commit}, method='PUT')
-    r.require(result.get('merged'), 'Catalog PR could not be merged')
-    gh('workflow','run','pages.yml','--repo',REGISTRY,'--ref','main')
+    request_validation(pr)
+    print('Catalog ready for review: ' + pr['html_url'])
 
 
 def main():
+    pages = json.loads(gh('api', f'repos/{REGISTRY}/pulls?state=open&base=main&per_page=100', '--paginate', '--slurp'))
+    for page in pages:
+        for pr in page:
+            head = pr['head']
+            if (head.get('repo') or {}).get('full_name') == REGISTRY and head['ref'].startswith('automation/catalog-'):
+                request_validation(pr)
+                print('Waiting for catalog review: ' + pr['html_url'])
+                return
     changed = False
     with tempfile.TemporaryDirectory() as folder:
         key = Path(folder)/'signing.pem'

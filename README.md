@@ -98,13 +98,18 @@ minutes, and you can also start it by hand. GitHub may delay scheduled runs. The
 2. signs the installable archives with the `panasms-ci` key;
 3. uploads all architecture variants before it finalizes the immutable registry release;
 4. verifies every public catalog asset;
-5. opens and merges a catalog pull request after the required `validate` check passes, then
-   starts the Pages deployment.
+5. opens a catalog pull request and starts validation on its branch.
+
+A maintainer reviews the catalog PR, waits for its CI and automated reviews, and merges it.
+The push to `main` then starts the Pages deployment. While a catalog PR remains open, scheduled
+imports wait and retry any missing validation dispatch. The next import includes new releases
+after that PR is merged or closed.
 
 The signing job never runs code from a module payload. The `CI_PUBLISHING_ENABLED` repository
 variable turns publication on or off, and it is on for this registry. The **Validate and publish
 registry** workflow (`pages.yml`) runs the tests and an online catalog build for every pull request
-and push to `main`, and publishes the site from `main`.
+and push to `main`. It also validates catalog branches through workflow dispatch and publishes
+the site from `main`. Branch validation checks existing release entries against `origin/main`.
 
 Publication runs one job at a time, and a failed run can safely run again. The importer verifies and reuses archives
 that are already published and never overwrites them. Existing entries stay in the catalog. If
