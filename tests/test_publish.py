@@ -8,7 +8,7 @@ import sys
 import tempfile
 import unittest
 import zipfile
-from unittest.mock import patch
+from unittest.mock import call, patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'scripts'))
 import publish
 import registry
@@ -103,3 +103,96 @@ class Publish(unittest.TestCase):
         self.assertIn('<dd>SUL-1.0</dd>', page)
         self.assertIn('<dd>LicenseRef-PaNasMs-Source-Available-1.0</dd>', page)
         self.assertIn('<dd>PolyForm-Noncommercial-1.0.0</dd>', page)
+
+
+class CatalogImport(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        for directory in ('entries', 'provenance'):
+            (self.root / directory).mkdir()
+        for name in ('catalog.json', 'catalog.sig', 'entries/current.json'):
+            (self.root / name).write_text('{}')
+        root = patch.object(registry, 'ROOT', self.root)
+        root.start()
+        self.addCleanup(root.stop)
+
+    def test_catalog_commit_stops_at_reviewable_pull_request(self):
+        base = 'a' * 40
+        commit = 'b' * 40
+        prefix = 'repos/' + publish.REGISTRY
+
+        def api(path, data=None, method=None):
+            self.assertIsNone(method)
+            responses = {
+                prefix + '/git/ref/heads/main': {'object': {'sha': base}},
+                prefix + '/git/commits/' + base: {'tree': {'sha': 'base-tree'}},
+                prefix + '/git/trees': {'sha': 'catalog-tree'},
+                prefix + '/git/commits': {'sha': commit},
+                prefix + '/git/refs': {},
+                prefix + '/pulls': {'number': 1, 'html_url': 'https://github.com/' + publish.REGISTRY + '/pull/1'},
+                prefix + '/statuses/' + commit: {},
+            }
+            return responses[path]
+
+        with patch.object(publish, 'api', side_effect=api) as requests, \
+                patch.object(publish, 'gh') as gh, \
+                patch.object(publish.subprocess, 'check_output', return_value=base + '\n'), \
+                patch.dict(publish.os.environ, {'GITHUB_RUN_ID': '123', 'GITHUB_RUN_ATTEMPT': '1'}):
+            publish.commit_catalog()
+        gh.assert_not_called()
+        tree = next(c.args[1] for c in requests.call_args_list if c.args[0] == prefix + '/git/trees')
+        self.assertEqual(tree['base_tree'], 'base-tree')
+        self.assertEqual({item['path'] for item in tree['tree']}, {'catalog.json', 'catalog.sig', 'entries/current.json'})
+        pr = next(c.args[1] for c in requests.call_args_list if c.args[0] == prefix + '/pulls')
+        self.assertEqual(pr['base'], 'main')
+        self.assertEqual(pr['head'], 'automation/catalog-123-1')
+        self.assertEqual(requests.call_args.args[0], prefix + '/statuses/' + commit)
+
+    def test_stale_catalog_cannot_create_a_branch_or_pull_request(self):
+        with patch.object(publish, 'api', return_value={'object': {'sha': 'new-base'}}) as api, \
+                patch.object(publish.subprocess, 'check_output', return_value='old-base\n'):
+            with self.assertRaisesRegex(ValueError, 'Registry changed during import'):
+                publish.commit_catalog()
+        api.assert_called_once_with('repos/' + publish.REGISTRY + '/git/ref/heads/main')
+
+    def test_pending_catalog_on_later_page_defers_import_until_merged_or_closed(self):
+        pending = {'head': {'ref': 'automation/catalog-123-1', 'repo': {'full_name': publish.REGISTRY}},
+                   'html_url': 'https://github.com/' + publish.REGISTRY + '/pull/1'}
+        unrelated = {'head': {'ref': 'dependency-update', 'repo': {'full_name': publish.REGISTRY}}}
+        with patch.object(publish, 'gh', return_value=json.dumps([[unrelated], [pending]])) as gh, \
+                patch.object(publish, 'publish_build') as publish_build, \
+                patch.object(publish, 'commit_catalog') as commit_catalog, \
+                patch.object(publish.subprocess, 'run') as run, \
+                patch.dict(publish.os.environ, {}, clear=True):
+            publish.main()
+        gh.assert_called_once_with('api', 'repos/' + publish.REGISTRY + '/pulls?state=open&base=main&per_page=100', '--paginate', '--slurp')
+        publish_build.assert_not_called()
+        commit_catalog.assert_not_called()
+        run.assert_not_called()
+
+        release = {'tag_name': 'v0.1.7'}
+        with patch.object(publish, 'gh', side_effect=[json.dumps([[unrelated]]), json.dumps([[release]])]), \
+                patch.object(publish, 'REPOSITORIES', {'backup': 'PaNasMs/module-backup'}), \
+                patch.object(publish, 'publish_build', return_value=True) as publish_build, \
+                patch.object(publish, 'commit_catalog') as commit_catalog, \
+                patch.object(publish.subprocess, 'run') as run, \
+                patch.dict(publish.os.environ, {'MODULE_SIGNING_KEY': 'test-key'}, clear=True):
+            publish.main()
+        publish_build.assert_called_once()
+        self.assertEqual(publish_build.call_args.args[:3], (release, 'backup', 'PaNasMs/module-backup'))
+        self.assertEqual([c.args[0][2] for c in run.call_args_list], ['sign', 'unittest', 'verify'])
+        commit_catalog.assert_called_once_with()
+
+    def test_fork_or_deleted_head_does_not_block_official_imports(self):
+        for repo in ({'full_name': 'someone/module-registry'}, None):
+            with self.subTest(repo=repo):
+                pending = {'head': {'ref': 'automation/catalog-123-1', 'repo': repo}}
+                with patch.object(publish, 'gh', side_effect=[json.dumps([[pending]]), '[]']) as gh, \
+                        patch.object(publish, 'REPOSITORIES', {'backup': 'PaNasMs/module-backup'}), \
+                        patch.object(publish, 'commit_catalog') as commit_catalog, \
+                        patch.dict(publish.os.environ, {'MODULE_SIGNING_KEY': 'test-key'}, clear=True):
+                    publish.main()
+                self.assertEqual(gh.call_args, call('api', 'repos/PaNasMs/module-backup/releases', '--paginate', '--slurp'))
+                commit_catalog.assert_not_called()
